@@ -1,0 +1,62 @@
+run:
+  timeout: 5m
+  tests: true            # Также проверяет тестовые файлы
+  concurrency: 4         # Параллельные процессы
+
+output:
+  formats:
+    - colored-line-number
+  print-issued-lines: true
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - revive
+    - gofmt
+    - goimports
+    - depguard
+    - dupl
+    - gocyclo
+    - nakedret
+    - prealloc
+    - unparam
+    - makezero
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15    # Уменьши до 10, если хочешь быть строже
+  dupl:
+    threshold: 100        # Кол-во токенов до дубликата
+  errcheck:
+    check-type-assertions: true
+  revive:
+    config: revive.toml   # Можно использовать свой конфиг (если есть)
+  depguard:
+    list-type: blacklist
+    packages:
+      - github.com/some/bad/package
+    packages-with-error-message:
+      github.com/some/other/bad/pkg: "don't use this package"
+  gofmt:
+    simplify: true
+  govet:
+    enable:
+      - shadow
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0     # без ограничений
+  max-same-issues: 0           # без ограничений
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck            # Можно отключить errcheck в тестах
+    - text: "should have comment"
+      linters:
+        - golint              # если включишь golint — не ругаться на комменты
