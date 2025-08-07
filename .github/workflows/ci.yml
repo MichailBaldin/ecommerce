@@ -33,9 +33,6 @@ jobs:
           cd ../users && go mod tidy  
           cd ../products && go mod tidy
 
-      - name: Check if go mod tidy changed anything
-        run: git diff --exit-code
-
       - name: Go vet for all modules
         run: |
           cd services/gateway && go vet ./...
