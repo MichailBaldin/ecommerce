@@ -33,6 +33,9 @@ jobs:
           cd ../users && go mod tidy  
           cd ../products && go mod tidy
 
+      - name: Check if go mod tidy changed anything
+        run: git diff --exit-code
+
       - name: Go vet for all modules
         run: |
           cd services/gateway && go vet ./...
@@ -63,11 +66,25 @@ jobs:
           echo "Building products service..."
           cd ../products && go build -v .
 
-      - name: Run golangci-lint
+      - name: Run golangci-lint for gateway
         uses: golangci/golangci-lint-action@v3
         with:
           version: latest
-          working-directory: ./
+          working-directory: services/gateway
+          args: --timeout=5m
+
+      - name: Run golangci-lint for users
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: services/users
+          args: --timeout=5m
+
+      - name: Run golangci-lint for products
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: services/products
           args: --timeout=5m
 
       - name: Notify Telegram on Success
