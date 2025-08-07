@@ -55,7 +55,9 @@ func main() {
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok","service":"users"}`))
+		if _, err := w.Write([]byte(`{"status":"ok","service":"users"}`)); err != nil {
+			logger.Error("Failed to write health response", zap.Error(err))
+		}
 	})
 
 	logger.Info("User service started successfully", zap.String("port", cfg.Port))

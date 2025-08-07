@@ -8,19 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Используем in-memory SQLite для тестов (добавим зависимость в go.mod)
-const testDSN = "file::memory:?cache=shared"
-
-func setupTestDB(t *testing.T) UserRepository {
-	// Для простоты тестов можно использовать SQLite in-memory
-	// В реальном проекте лучше использовать testcontainers с PostgreSQL
-
-	// Пропускаем интеграционные тесты если нет доступной БД
-	t.Skip("Integration tests require database setup - implement with testcontainers or skip in CI")
-
-	return nil
-}
-
 func TestPostgresRepo_Create(t *testing.T) {
 	t.Skip("Integration test - requires PostgreSQL database")
 
