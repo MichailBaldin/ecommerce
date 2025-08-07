@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  GO_VERSION: "1.24"
+
+jobs:
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Go workspace sync
+        run: go work sync
+
+      - name: Go mod tidy
+        run: |
+          find . -name go.mod -execdir go mod tidy \;
+
+      - name: Check if go mod tidy changed anything
+        run: git diff --exit-code
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Go fmt check
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "The following files are not formatted:"
+            gofmt -s -l .
+            exit 1
+          fi
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Build all services
+        run: |
+          echo "Building user-service..."
+          cd services/user-service && go build -v .
+          echo "Building product-service..."
+          cd ../product-service && go build -v .
+          echo "Building api-gateway..."
+          cd ../api-gateway && go build -v .
+
+      - name: Notify Telegram on Success
+        if: success()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="<b>BUILD SUCCESS</b>%0A<b>Repo:</b> ${{ github.repository }}%0A<b>Branch:</b> ${{ github.ref_name }}%0A<b>Commit:</b> <code>${{ github.sha }}</code>%0A<b>Author:</b> ${{ github.actor }}"
+
+      - name: Notify Telegram on Failure
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="<b>BUILD FAILED</b>%0A<b>Repo:</b> ${{ github.repository }}%0A<b>Branch:</b> ${{ github.ref_name }}%0A<b>Commit:</b> <code>${{ github.sha }}</code>%0A<b>Author:</b> ${{ github.actor }}%0A<b>Job:</b> ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
