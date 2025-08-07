@@ -7,7 +7,7 @@ on:
     branches: [main, develop]
 
 env:
-  GO_VERSION: "1.24"
+  GO_VERSION: "1.24.5"
 
 jobs:
   lint-and-test:
@@ -27,35 +27,51 @@ jobs:
       - name: Go workspace sync
         run: go work sync
 
-      - name: Go mod tidy
+      - name: Go mod tidy for all modules
         run: |
-          find . -name go.mod -execdir go mod tidy \;
+          cd services/gateway && go mod tidy
+          cd ../users && go mod tidy  
+          cd ../products && go mod tidy
 
       - name: Check if go mod tidy changed anything
         run: git diff --exit-code
 
-      - name: Go vet
-        run: go vet ./...
-
-      - name: Go fmt check
+      - name: Go vet for all modules
         run: |
-          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          cd services/gateway && go vet ./...
+          cd ../users && go vet ./...
+          cd ../products && go vet ./...
+
+      - name: Go fmt check for all modules
+        run: |
+          UNFORMATTED=$(find . -name "*.go" -not -path "./vendor/*" | xargs gofmt -s -l)
+          if [ -n "$UNFORMATTED" ]; then
             echo "The following files are not formatted:"
-            gofmt -s -l .
+            echo "$UNFORMATTED"
             exit 1
           fi
 
-      - name: Run tests
-        run: go test -v ./...
+      - name: Run tests for all modules
+        run: |
+          cd services/gateway && go test -v ./...
+          cd ../users && go test -v ./...
+          cd ../products && go test -v ./...
 
       - name: Build all services
         run: |
-          echo "Building user-service..."
-          cd services/user-service && go build -v .
-          echo "Building product-service..."
-          cd ../product-service && go build -v .
-          echo "Building api-gateway..."
-          cd ../api-gateway && go build -v .
+          echo "Building gateway..."
+          cd services/gateway && go build -v .
+          echo "Building users service..."
+          cd ../users && go build -v .
+          echo "Building products service..."
+          cd ../products && go build -v .
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: ./
+          args: --timeout=5m
 
       - name: Notify Telegram on Success
         if: success()

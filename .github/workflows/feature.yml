@@ -5,7 +5,7 @@ on:
     branches: ["feature/*"]
 
 env:
-  GO_VERSION: "1.24"
+  GO_VERSION: "1.24.5"
 
 jobs:
   quick-check:
@@ -25,28 +25,49 @@ jobs:
       - name: Go workspace sync
         run: go work sync
 
-      - name: Go vet
-        run: go vet ./...
-
-      - name: Build changed services
+      - name: Determine changed services
+        id: changes
         run: |
-          # Определяем какие сервисы изменились
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD || echo "")
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
 
-          if echo "$CHANGED_FILES" | grep -q "services/user-service"; then
-            echo "Building user-service..."
-            cd services/user-service && go build .
+          # Проверяем какие сервисы изменились
+          if echo "$CHANGED_FILES" | grep -q "services/gateway"; then
+            echo "gateway_changed=true" >> $GITHUB_OUTPUT
+          fi
+          if echo "$CHANGED_FILES" | grep -q "services/users"; then
+            echo "users_changed=true" >> $GITHUB_OUTPUT
+          fi
+          if echo "$CHANGED_FILES" | grep -q "services/products"; then
+            echo "products_changed=true" >> $GITHUB_OUTPUT
           fi
 
-          if echo "$CHANGED_FILES" | grep -q "services/product-service"; then
-            echo "Building product-service..."
-            cd services/product-service && go build .
-          fi
+      - name: Build Gateway
+        if: steps.changes.outputs.gateway_changed == 'true'
+        run: |
+          echo "Building gateway service..."
+          cd services/gateway
+          go mod tidy
+          go vet ./...
+          go build .
 
-          if echo "$CHANGED_FILES" | grep -q "services/api-gateway"; then
-            echo "Building api-gateway..."
-            cd services/api-gateway && go build .
-          fi
+      - name: Build Users Service
+        if: steps.changes.outputs.users_changed == 'true'
+        run: |
+          echo "Building users service..."
+          cd services/users
+          go mod tidy
+          go vet ./...
+          go build .
+
+      - name: Build Products Service
+        if: steps.changes.outputs.products_changed == 'true'
+        run: |
+          echo "Building products service..."
+          cd services/products
+          go mod tidy
+          go vet ./...
+          go build .
 
       - name: Notify Telegram
         if: always()
