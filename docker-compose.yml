@@ -1,5 +1,6 @@
 services:
-  postgres:
+  # Databases
+  postgres-users:
     image: postgres:15-alpine
     environment:
       POSTGRES_DB: users
@@ -8,26 +9,59 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_users_data:/var/lib/postgresql/data
 
-  redis:
+  postgres-products:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: products
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_products_data:/var/lib/postgresql/data
+
+  # Cache
+  redis-users:
     image: redis:alpine
     ports:
       - "6379:6379"
 
+  redis-products:
+    image: redis:alpine
+    ports:
+      - "6380:6379"
+
+  # Services
   user-service:
     build: ./services/users
     ports:
       - "8001:8001"
     environment:
       PORT: 8001
-      POSTGRES_HOST: postgres
+      POSTGRES_HOST: postgres-users
       POSTGRES_DB: users
-      REDIS_ADDR: redis:6379
+      REDIS_ADDR: redis-users:6379
       ENVIRONMENT: development
     depends_on:
-      - postgres
-      - redis
+      - postgres-users
+      - redis-users
+
+  product-service:
+    build: ./services/products
+    ports:
+      - "8002:8002"
+    environment:
+      PORT: 8002
+      POSTGRES_HOST: postgres-products
+      POSTGRES_DB: products
+      REDIS_ADDR: redis-products:6379
+      ENVIRONMENT: development
+    depends_on:
+      - postgres-products
+      - redis-products
 
 volumes:
-  postgres_data:
+  postgres_users_data:
+  postgres_products_data:
