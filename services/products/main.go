@@ -21,7 +21,11 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to initialize logger:", err)
 	}
-	defer logger.Sync()
+	defer func() {
+		if syncErr := logger.Sync(); syncErr != nil {
+			log.Printf("Failed to sync logger: %v", syncErr)
+		}
+	}()
 
 	logger.Info("Starting products service",
 		zap.String("port", cfg.Port),
